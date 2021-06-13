@@ -1,0 +1,49 @@
+;Sum the values at the inverted diagonal of an integers matrix, sized 100x100.
+
+.DATA
+Total  dq 0 ; total de elementos de la matriz
+Matrix dw 100 dup (100 dup (?) )
+cont dq 0 ; contador de diagonales
+contadorPos dq 0 ; contador de posiciones en matriz
+
+quickMatrixSum:
+
+MOV R10, 0
+MOV R11, 100
+MOV R12, 100
+MOV RSI,100
+MOV AX, Matrix
+
+ multNxM: ; multiplicacion para sacar el total de elementos
+ 	ADD R11, R11
+ 	INC R10
+ 	CMP R10, R12
+ 	JNZ multNxM
+
+finmultNxM:
+MOV [total], R11 ; se le pasa el total de elementos a total
+MOV R10, 100
+
+ciclo1:
+MOV R10, contadorPos ; se pasa el contador de posiciones a el registro R10
+CMP [total], R10 ; se compara con el total de elementos con el contador de posiciones y si es igual entonces termina el programa
+JZ fin
+    
+
+ADD R10, [contadorPos] 
+MOV RDI, [Matrix+R10] ; puntero de la matriz + fila + col
+ADD [cont], 1
+ADD [contadorPos], 1
+cmp [cont], R10 ; compara si el contador tiene la cantidad de 100 en el primer caso para sumar diagonal y e los demas casos compara con 100-1, 100-2, etc. para calcular cual es la diagonal
+ je sume ; si es igual suma las diagonales y guarda el resultado en RDX
+
+sume:
+
+ADD RDX,RDI
+MOV [cont], 0 ; se reinicia el contador para buscar la siguiente diagonal
+SUB R10, 1 ; se le resta a r10 para sacar la siguiente diagonal
+JMP ciclo1 
+ 
+
+fin:
+ret

@@ -1,0 +1,341 @@
+// Semaforos.cpp : This file contains the 'main' function. Program execution begins and ends there.
+//
+
+#include<stdio.h>
+#include<conio.h>
+#include<stdlib.h>
+#include <Windows.h>
+#include<math.h>
+#include<string>
+#include<iostream>
+#include <time.h>
+//#include <bits/stdc++.h>
+#include <direct.h>
+
+using namespace std;
+
+
+string led = "xxx";
+
+
+enum Colors { // Listado de colores (La letra "L" al inicio, indica que es un color más claro que su antecesor).
+	BLACK = 0,
+	GREEN = 2,
+	RED = 4,
+	YELLOW = 14,
+	WHITE = 15
+};
+
+int color[3] = { RED,YELLOW,GREEN };
+
+
+
+//Next state
+unsigned int d1, d2, d3;
+//Input
+unsigned int input;
+
+//Output
+
+unsigned int r1, a1, v1; //Semáforo 1
+unsigned int r2, a2, v2; //Semáforo 2
+unsigned int pr, pv; 	//Peatornal
+
+
+//State memory
+unsigned int q1, q2, q3;
+
+
+
+
+
+
+int pulso;
+clock_t esperar;
+
+
+void Color(int Background, int Text) { // Función para cambiar el color del fondo y/o pantalla
+
+	HANDLE Console = GetStdHandle(STD_OUTPUT_HANDLE); // Tomamos la consola.
+
+	// Para cambiar el color, se utilizan números desde el 0 hasta el 255.
+	// Pero, para convertir los colores a un valor adecuado, se realiza el siguiente cálculo.
+	int    New_Color = Text + (Background * 16);
+
+	SetConsoleTextAttribute(Console, New_Color); // Guardamos los cambios en la Consola.
+
+}
+
+void semaforo(unsigned int color1, unsigned int color2, unsigned int color3) {
+
+	if (color1 != 0) {
+		color1 = RED;
+
+		color2 = WHITE;
+		color3 = WHITE;
+
+	}
+	else if (color2 != 0) {
+		color2 = YELLOW;
+
+		color1 = WHITE;
+		color3 = WHITE;
+	}
+	else if (color3 != 0) {
+		color3 = GREEN;
+
+		color1 = WHITE;
+		color2 = WHITE;
+	}
+	Color(BLACK, color1); cout << led << endl;
+	Color(BLACK, WHITE); cout << "---" << endl;
+	Color(BLACK, color2); cout << led << endl;
+	Color(BLACK, WHITE); cout << "---" << endl;
+	Color(BLACK, color3); cout << led << endl;
+	Color(BLACK, WHITE); //Función que imprime un semáforo
+	cout << endl;
+}
+
+void peatonal(unsigned int r, unsigned int v) {
+	if (r != 0) {
+		r = RED;
+
+		v = WHITE;
+
+	}
+	else if (v != 0) {
+		v = GREEN;
+
+		r = WHITE;
+	}
+
+	Color(BLACK, r); cout << led << endl;
+	Color(BLACK, WHITE); cout << "---" << endl;
+	Color(BLACK, v); cout << led << endl;
+	Color(BLACK, WHITE); //Función que imprime un semáforo
+	cout << endl;
+}
+
+
+
+
+void calculoDePulso() {
+	//Next state
+
+	
+	//d1 = (!q1 & !q2 & !q3) | (q1 & q3) | (q1 & q2);
+	_asm {
+		mov eax, q1;
+		cmp eax, 0;
+		jne if
+		mov eax, 1;
+		je else
+		if:
+		mov eax, 0;
+		else: 
+		mov ebx, q2;
+		not ebx;
+		and ebx, eax;
+		mov ecx, q3;
+		not ecx;
+		and ecx, ebx;
+		mov d1, ecx;
+		mov eax, q1;
+		mov ecx, q3;
+		and ecx, eax;
+		or d1, ecx;
+		mov eax, q1;
+		mov ecx, q2;
+		and ecx, eax;
+		or d1, ecx;
+	}
+
+	
+	if (d1 != 0) {
+		d1 = 1;
+	}
+	
+	//d2 = (!q1 & !q2 & q3) | (!q1 & q2 & input) | (q1 & !q2 & !q3 & input);
+	_asm {
+		mov eax, q1;
+		cmp eax, 0;
+		jne ya
+			mov eax, 1;
+		je otr
+			ya:
+		mov eax, 0;
+			otr:
+		mov ebx, q2;
+		not ebx;
+		and ebx, eax;
+		mov ecx, q3;
+		and ecx, ebx;
+		mov d2, ecx;
+		mov eax, q1;
+		not eax;
+		mov ecx, q2;
+		and ecx, eax;
+		mov eax, input;
+		and eax, ecx;
+		or d2, eax;
+		mov eax, q1;
+		mov ecx, q2;
+		not ecx;
+		and ecx, eax;
+		mov eax, q3;
+		not eax;
+		and ecx, eax;
+		mov eax, input;
+		and ecx, eax;
+		or d2, ecx;
+	}
+	if (d2 != 0) {
+		d2 = 1;
+	}
+
+
+	d3 = (q2 & input) | q1;
+
+	_asm {
+		mov eax, q2;
+		mov ebx, input;
+		and ebx, eax;
+		mov ecx, q1;
+		or ebx, ecx;
+		mov d3, ebx;
+	}
+
+
+	if (d3 != 0) {
+		d3 = 1;
+	}
+
+	//stateMemory
+	q1 = d1;
+	q2 = d2;
+	q3 = d3;
+
+	//output logic
+	r1 = (!q1 & q3) | (!q1 & q2);
+	a1 = q1;
+	v1 = (!q1 & !q2 & !q3);
+
+	r2 = (!q2 & !q3) | (q2 & q3);
+	a2 = (q2 & !q3);
+	v2 = (!q2 & q3);
+
+	pr = (!q2 | !q3);
+	pv = (q2 & q3);
+
+	semaforo(r1, a1, v1);
+	semaforo(r2, a2, v2);
+	peatonal(pr, pv);
+}
+
+
+
+int  main() {
+
+
+	//--------------Estado inicial----------------
+	//Next state
+	d1 = 1;
+	d2 = 0;
+	d3 = 0;
+	input = 0;
+
+	//Output logic
+	r1 = 0;
+	a1 = 0;
+	v1 = 1;
+
+	r2 = 1;
+	a2 = 0;
+	v2 = 0;
+
+	pr = 1;
+	pv = 0;
+
+	//StateMemory
+	q1 = 0;
+	q2 = 0;
+	q3 = 0;
+
+	int a = 0;
+	int b = 0;
+	int resultado;
+
+	cout << "Estado inicial" << endl;
+	Sleep(2000);
+	semaforo(r1, a1, v1);
+	semaforo(r2, a2, v2);
+	peatonal(pr, pv);
+
+
+	int ciclo = 1;
+
+
+	pulso = 1;
+	while (ciclo) {
+		ciclo++;
+
+
+		
+
+		Sleep(1000);
+		cout << "PULSO ARRIBA" << endl;
+		Sleep(2000);
+		//Pulso arriba
+		if (pulso == 1) {
+
+			calculoDePulso();
+			pulso = 0;
+		}
+
+
+		Sleep(1000);
+		cout << "PULSO ABAJO" << endl;
+		Sleep(2000);
+		//Pulso arriba
+		if (pulso == 0) {
+
+			calculoDePulso();
+			pulso = 1;
+		}
+
+		
+		//Peatonal
+		if (ciclo % 7 == 0) {
+			input = 1;
+		}
+		else {
+			input = 0;
+		}
+
+		if (ciclo == 14) {
+
+			ciclo = !ciclo;
+		}
+
+
+	}
+
+
+	
+
+	return 0;
+
+}
+
+
+
+// Run program: Ctrl + F5 or Debug > Start Without Debugging menu
+// Debug program: F5 or Debug > Start Debugging menu
+
+// Tips for Getting Started: 
+//   1. Use the Solution Explorer window to add/manage files
+//   2. Use the Team Explorer window to connect to source control
+//   3. Use the Output window to see build output and other messages
+//   4. Use the Error List window to view errors
+//   5. Go to Project > Add New Item to create new code files, or Project > Add Existing Item to add existing code files to the project
+//   6. In the future, to open this project again, go to File > Open > Project and select the .sln file
